@@ -2,12 +2,14 @@
 """
 okonomi (お好み) Build Engine
 =============================
-Compiles, inlines, and encrypts standalone HTML apps and the portal hub using AES-256-GCM (PBKDF2-HMAC-SHA256).
-Outputs self-decrypting static bundles into dist/ ready for GitHub Pages hosting.
+Compiles, inlines, and encrypts standalone HTML apps using AES-256-GCM (PBKDF2-HMAC-SHA256).
+Outputs self-decrypting static bundles into dist/<slug>/index.html ready for GitHub Pages hosting.
+Maintains a stealth/empty home page at dist/index.html with zero hub directory links.
 """
 
 import argparse
 import base64
+import hashlib
 import mimetypes
 import os
 import re
@@ -29,7 +31,6 @@ TEMPLATES_DIR = ROOT_DIR / "templates"
 DIST_DIR = ROOT_DIR / "dist"
 PASSWORD_FILE = ROOT_DIR / "PASSWORD"
 SHELL_TEMPLATE_FILE = TEMPLATES_DIR / "decryptor_shell.html"
-PORTAL_TEMPLATE_FILE = TEMPLATES_DIR / "portal_template.html"
 
 PBKDF2_ITERATIONS = 600_000
 
@@ -66,6 +67,21 @@ def generate_passphrase() -> str:
     words = [secrets.choice(wordlist) for _ in range(5)]
     number = secrets.randbelow(900) + 100
     return f"{'-'.join(words)}-{number}"
+
+
+def get_stable_salt(password: str) -> bytes:
+    """Derive a stable 16-byte salt from the master password to preserve browser session caching across rebuilds."""
+    salt_file = ROOT_DIR / ".salt"
+    if salt_file.exists():
+        try:
+            salt_data = salt_file.read_bytes()
+            if len(salt_data) >= 16:
+                return salt_data[:16]
+        except Exception:
+            pass
+    # Deterministic salt based on password + project pepper
+    salt = hashlib.sha256(f"okonomi-salt-v1:{password}".encode("utf-8")).digest()[:16]
+    return salt
 
 
 def derive_key(password: str, salt: bytes) -> bytes:
@@ -159,46 +175,16 @@ def inline_assets(html_content: str, app_root_dir: Path) -> str:
     return str(soup)
 
 
-def extract_app_metadata(html_content: str, slug: str) -> Dict[str, str]:
-    """Extract metadata (title, description, icon) from app HTML."""
+def extract_app_title(html_content: str, slug: str) -> str:
+    """Extract display title from app HTML."""
     soup = BeautifulSoup(html_content, "html.parser")
-    
-    # Title
     title_tag = soup.find("title")
     title = title_tag.get_text().strip() if title_tag else ""
     if not title:
         h1_tag = soup.find("h1")
         title = h1_tag.get_text().strip() if h1_tag else slug.replace("-", " ").replace("_", " ").title()
-
-    # Strip generic suffix if present
     title = re.sub(r"\s*-\s*okonomi\s*$", "", title, flags=re.IGNORECASE).strip()
-
-    # Description
-    desc_meta = soup.find("meta", attrs={"name": "description"})
-    desc = desc_meta.get("content", "").strip() if desc_meta else ""
-    if not desc:
-        p_tag = soup.find("p")
-        desc = p_tag.get_text().strip()[:140] if p_tag else "Encrypted application"
-
-    # Icon heuristic
-    icon = "📱"
-    if "test" in slug or "sandbox" in slug:
-        icon = "🧪"
-    elif "note" in slug or "doc" in slug:
-        icon = "📝"
-    elif "calc" in slug or "budget" in slug or "finance" in slug:
-        icon = "📊"
-    elif "travel" in slug or "trip" in slug:
-        icon = "✈️"
-    elif "tool" in slug or "util" in slug:
-        icon = "🛠️"
-
-    return {
-        "slug": slug,
-        "title": title,
-        "desc": desc,
-        "icon": icon,
-    }
+    return title
 
 
 def discover_apps() -> List[Dict]:
@@ -253,28 +239,6 @@ def wrap_with_decryptor(
     return shell_template.replace("</body>", f"{payload_json}\n</body>")
 
 
-def build_portal_html(portal_template: str, apps_meta: List[Dict]) -> str:
-    """Generates the unencrypted portal hub HTML containing the app directory."""
-    cards_html = []
-    for app in apps_meta:
-        card = f"""
-        <a href="./{app['slug']}/" class="app-card" data-title="{app['title']}" data-desc="{app['desc']}" data-slug="{app['slug']}">
-          <div class="card-top">
-            <div class="card-icon">{app['icon']}</div>
-            <h2 class="card-title">{app['title']}</h2>
-            <p class="card-desc">{app['desc']}</p>
-          </div>
-          <div class="card-footer">
-            <span class="card-slug">/{app['slug']}</span>
-            <span class="arrow">Open →</span>
-          </div>
-        </a>"""
-        cards_html.append(card)
-
-    rendered_cards = "\n".join(cards_html) if cards_html else "<p class='empty-state' style='display:block;'>No applications discovered in src/apps/</p>"
-    return portal_template.replace("<!-- APP_CARDS_PLACEHOLDER -->", rendered_cards)
-
-
 def main():
     parser = argparse.ArgumentParser(description="okonomi (お好み) static builder & encryptor")
     parser.add_argument("--generate-passphrase", action="store_true", help="Generate a secure master passphrase and exit")
@@ -290,19 +254,13 @@ def main():
         return
 
     start_time = time.time()
-    print("🍱 Building okonomi encrypted portal...")
+    print("🍱 Building okonomi encrypted apps...")
 
     if not SHELL_TEMPLATE_FILE.exists():
         print(f"[!] Error: Missing decryptor shell template at {SHELL_TEMPLATE_FILE}")
         sys.exit(1)
 
-    if not PORTAL_TEMPLATE_FILE.exists():
-        print(f"[!] Error: Missing portal template at {PORTAL_TEMPLATE_FILE}")
-        sys.exit(1)
-
     shell_template = SHELL_TEMPLATE_FILE.read_text(encoding="utf-8")
-    portal_template = PORTAL_TEMPLATE_FILE.read_text(encoding="utf-8")
-
     password = get_password(args.password)
 
     # 1. Clean dist if requested
@@ -310,14 +268,13 @@ def main():
         shutil.rmtree(DIST_DIR)
     DIST_DIR.mkdir(parents=True, exist_ok=True)
 
-    # 2. Generate shared build salt and derive key
-    salt = os.urandom(16)
+    # 2. Derive stable build salt and key
+    salt = get_stable_salt(password)
     salt_b64 = base64.b64encode(salt).decode("ascii")
     master_key = derive_key(password, salt)
 
     # 3. Discover and process apps
     discovered_apps = discover_apps()
-    apps_meta = []
 
     print(f"📦 Discovered {len(discovered_apps)} app(s) in src/apps/:")
 
@@ -329,8 +286,7 @@ def main():
         print(f"  • Inlining and bundling '{slug}' ({entry_file.relative_to(ROOT_DIR)})...")
         raw_html = entry_file.read_text(encoding="utf-8")
         inlined_html = inline_assets(raw_html, root_dir)
-        meta = extract_app_metadata(inlined_html, slug)
-        apps_meta.append(meta)
+        title = extract_app_title(inlined_html, slug)
 
         # Encrypt app
         iv, ciphertext = encrypt_payload(inlined_html, master_key)
@@ -346,28 +302,18 @@ def main():
             salt_b64,
             iv_b64,
             ciphertext_b64,
-            meta["title"]
+            title
         )
         app_dist_file.write_text(encrypted_page_html, encoding="utf-8")
         print(f"    ✓ Encrypted -> dist/{slug}/index.html ({len(encrypted_page_html):,} bytes)")
 
-    # 4. Build and encrypt Hub Portal
-    print("🏠 Generating Hub Portal...")
-    portal_html = build_portal_html(portal_template, apps_meta)
-    p_iv, p_ciphertext = encrypt_payload(portal_html, master_key)
-    p_iv_b64 = base64.b64encode(p_iv).decode("ascii")
-    p_ciphertext_b64 = base64.b64encode(p_ciphertext).decode("ascii")
-
-    encrypted_portal_html = wrap_with_decryptor(
-        shell_template,
-        salt_b64,
-        p_iv_b64,
-        p_ciphertext_b64,
-        "Portal Hub"
+    # 4. Generate Stealth Home Page (No Directory / Hub Listing)
+    stealth_index_file = DIST_DIR / "index.html"
+    stealth_index_file.write_text(
+        "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><title></title></head>\n<body></body>\n</html>\n",
+        encoding="utf-8"
     )
-    portal_dist_file = DIST_DIR / "index.html"
-    portal_dist_file.write_text(encrypted_portal_html, encoding="utf-8")
-    print(f"    ✓ Encrypted Hub -> dist/index.html ({len(encrypted_portal_html):,} bytes)")
+    print("  • Created stealth root page at dist/index.html (zero links)")
 
     # 5. Ensure .nojekyll for GitHub Pages
     nojekyll_file = DIST_DIR / ".nojekyll"

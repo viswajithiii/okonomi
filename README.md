@@ -12,14 +12,14 @@ Local Machine (Plaintext)                    GitHub & Public Internet (Ciphertex
 │ PASSWORD (gitignored)         │           │ build.py, deploy.sh, dev.sh (tracked)   │
 │ src/apps/ (gitignored)        │  ───────► │ templates/ (tracked generic templates)  │
 │ - test_page/index.html        │  build.py │ dist/ (tracked AES-256-GCM ciphertext)  │
-│ - quick-notes.html            │           │ - index.html (encrypted portal hub)     │
+│ - quick-notes.html            │           │ - index.html (stealth blank root)       │
 │ - budget-calc/index.html      │           │ - test_page/index.html (encrypted app)  │
 └───────────────────────────────┘           └─────────────────────────────────────────┘
 ```
 
+- **Direct Stealth URLs**: No hub of links is published on the home page. Apps live strictly at their designated path (e.g. `/test_page/`), maintaining stealth.
 - **Encryption**: AES-256-GCM with PBKDF2-HMAC-SHA256 (600,000 iterations).
-- **Single-Unlock UX**: All apps within a build share a single cryptographic salt. Entering your master password once unlocks the hub and all apps across the domain with **0ms instant decryption** via cached key in `localStorage`.
-- **Cache Invalidation**: Rebuilding with a new salt automatically clears stale cached keys and gracefully re-prompts for the password.
+- **Single-Unlock UX**: Entering your master password once on any app unlocks all apps across the domain with **0ms instant decryption** via cached key in `localStorage`.
 - **Strict Separation**: Master password and raw plaintext source code (`src/apps/`) are strictly gitignored and never leave your local machine.
 
 ---
@@ -46,7 +46,6 @@ cat << 'EOF' > src/apps/my-app/index.html
 <head><title>My App</title></head>
 <body>
   <h1>Hello from Encrypted App!</h1>
-  <a href="../">← Back to Hub</a>
 </body>
 </html>
 EOF
@@ -58,7 +57,7 @@ Start the local preview server:
 ```bash
 ./dev.sh
 ```
-Navigate to `http://localhost:8000/` and unlock with your master password.
+Navigate to `http://localhost:8000/test_page/` and unlock with your master password.
 
 ### 5. Deploy to GitHub Pages
 Run the deployment script (includes automated safety checks to prevent plaintext leaks):
@@ -81,8 +80,7 @@ okonomi/
 ├── README.md                  # Documentation
 │
 ├── templates/                 # [TRACKED] Generic UI templates (zero secrets)
-│   ├── decryptor_shell.html   # Standalone self-decrypting client bootstrap
-│   └── portal_template.html   # Portal hub launcher template
+│   └── decryptor_shell.html   # Standalone self-decrypting client bootstrap
 │
 ├── src/
 │   └── apps/                  # [GITIGNORED] Raw plaintext source apps
@@ -93,24 +91,7 @@ okonomi/
 │
 └── dist/                      # [TRACKED] AES-256-GCM encrypted artifacts
     ├── .nojekyll              # GitHub Pages Jekyll bypass
-    ├── index.html             # Encrypted hub portal
+    ├── index.html             # Stealth empty root
     └── test_page/
         └── index.html         # Self-decrypting test page
 ```
-
----
-
-## ⚙️ GitHub Pages Setup
-
-To serve your encrypted portal via GitHub Pages:
-1. In your GitHub repository, go to **Settings** → **Pages**.
-2. Under **Build and deployment** → **Source**, select **Deploy from a branch**.
-3. Choose your branch (e.g. `main`) and folder (`/dist` if supported by your setup, or deploy the `dist/` contents to `gh-pages` branch).
-
----
-
-## 🔒 Security Guarantees
-
-1. **Zero Server Knowledge**: GitHub and any intermediary CDN only see AES-256-GCM ciphertext and the static decryptor shell.
-2. **GPU Cracking Resistance**: 600,000 PBKDF2 iterations ensure brute-force resistance against offline attackers.
-3. **No External CDN Dependencies**: The decryptor shell runs 100% offline with zero external network dependencies.

@@ -7,7 +7,7 @@
   <style>
     :root {
       --bg: #0b0f19;
-      --card-bg: rgba(17, 24, 39, 0.85);
+      --card-bg: rgba(17, 24, 39, 0.9);
       --border: rgba(255, 255, 255, 0.08);
       --text: #f3f4f6;
       --text-muted: #9ca3af;
@@ -22,7 +22,7 @@
       color: var(--text);
       font-family: var(--font);
       min-height: 100vh;
-      display: flex;
+      display: none; /* Hidden by default until cached check completes */
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
@@ -254,7 +254,7 @@
           keyMaterial,
           { name: "AES-GCM", length: 256 },
           true,
-          ["encrypt", "decrypt"]
+          ["decrypt"]
         );
       }
 
@@ -272,6 +272,12 @@
         document.open();
         document.write(html);
         document.close();
+      }
+
+      function showUnlockPrompt() {
+        document.body.style.display = "flex";
+        const pwdInput = document.getElementById("password-input");
+        if (pwdInput) pwdInput.focus();
       }
 
       // Auto-unlock via cached key
@@ -303,8 +309,10 @@
       // Attempt immediate unlock
       tryCachedUnlock().then(success => {
         if (!success) {
-          document.body.style.display = "flex";
+          showUnlockPrompt();
         }
+      }).catch(() => {
+        showUnlockPrompt();
       });
 
       // UI Handlers
