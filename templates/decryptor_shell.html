@@ -4,8 +4,8 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>okonomi - Protected</title>
-  <style>
-    :root {
+  <style id="okonomi-shell-style">
+    #unlock-wrapper {
       --bg: #0b0f19;
       --card-bg: rgba(17, 24, 39, 0.95);
       --border: rgba(255, 255, 255, 0.08);
@@ -15,23 +15,21 @@
       --accent-hover: #0ea5e9;
       --danger: #f87171;
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      min-height: 100vh;
-      background: var(--bg);
-      color: var(--text);
-      font-family: var(--font);
-    }
-    .unlock-wrapper {
       min-height: 100vh;
       display: none;
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
       background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: var(--font);
     }
-    .unlock-card {
+    #unlock-wrapper * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    #unlock-wrapper .unlock-card {
       background: var(--card-bg);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
@@ -44,42 +42,43 @@
       text-align: center;
       transition: transform 0.2s ease;
     }
-    .unlock-card.shake {
-      animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    #unlock-wrapper .unlock-card.shake {
+      animation: okonomi-shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
     }
-    @keyframes shake {
+    @keyframes okonomi-shake {
       10%, 90% { transform: translate3d(-2px, 0, 0); }
       20%, 80% { transform: translate3d(4px, 0, 0); }
       30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
       40%, 60% { transform: translate3d(6px, 0, 0); }
     }
-    .logo-icon {
+    #unlock-wrapper .logo-icon {
       font-size: 2.5rem;
       margin-bottom: 0.75rem;
       display: inline-block;
     }
-    h1 {
+    #unlock-wrapper h1 {
       font-size: 1.5rem;
       font-weight: 700;
       letter-spacing: -0.02em;
       margin-bottom: 0.25rem;
       color: #fff;
     }
-    .brand-sub {
+    #unlock-wrapper .brand-sub {
       color: var(--text-muted);
       font-size: 0.875rem;
       margin-bottom: 1.75rem;
     }
-    .form-group {
+    #unlock-wrapper .form-group {
       margin-bottom: 1.25rem;
       text-align: left;
     }
-    .input-wrapper {
+    #unlock-wrapper .input-wrapper {
       position: relative;
       display: flex;
       align-items: center;
     }
-    input[type="password"], input[type="text"] {
+    #unlock-wrapper input[type="password"],
+    #unlock-wrapper input[type="text"] {
       width: 100%;
       background: rgba(15, 23, 42, 0.8);
       border: 1px solid var(--border);
@@ -90,11 +89,11 @@
       outline: none;
       transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    input:focus {
+    #unlock-wrapper input:focus {
       border-color: var(--accent);
       box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
     }
-    .toggle-visibility {
+    #unlock-wrapper .toggle-visibility {
       position: absolute;
       right: 0.75rem;
       background: none;
@@ -104,10 +103,10 @@
       font-size: 1rem;
       padding: 0.25rem;
     }
-    .toggle-visibility:hover {
+    #unlock-wrapper .toggle-visibility:hover {
       color: var(--text);
     }
-    .checkbox-group {
+    #unlock-wrapper .checkbox-group {
       display: flex;
       align-items: center;
       gap: 0.5rem;
@@ -117,11 +116,11 @@
       cursor: pointer;
       user-select: none;
     }
-    .checkbox-group input {
+    #unlock-wrapper .checkbox-group input {
       accent-color: var(--accent);
       cursor: pointer;
     }
-    .btn-submit {
+    #unlock-wrapper .btn-submit {
       width: 100%;
       padding: 0.8rem 1rem;
       background: var(--accent);
@@ -137,14 +136,14 @@
       justify-content: center;
       gap: 0.5rem;
     }
-    .btn-submit:hover:not(:disabled) {
+    #unlock-wrapper .btn-submit:hover:not(:disabled) {
       background: var(--accent-hover);
     }
-    .btn-submit:disabled {
+    #unlock-wrapper .btn-submit:disabled {
       opacity: 0.6;
       cursor: not-allowed;
     }
-    .error-msg {
+    #unlock-wrapper .error-msg {
       display: none;
       color: var(--danger);
       background: rgba(248, 113, 113, 0.1);
@@ -155,24 +154,24 @@
       margin-bottom: 1.25rem;
       text-align: center;
     }
-    .spinner {
+    #unlock-wrapper .spinner {
       width: 16px;
       height: 16px;
       border: 2px solid rgba(0, 0, 0, 0.2);
       border-top-color: #000;
       border-radius: 50%;
-      animation: spin 0.6s linear infinite;
+      animation: okonomi-spin 0.6s linear infinite;
       display: none;
     }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .footer-note {
+    @keyframes okonomi-spin { to { transform: rotate(360deg); } }
+    #unlock-wrapper .footer-note {
       margin-top: 1.5rem;
       font-size: 0.75rem;
       color: var(--text-muted);
     }
   </style>
 </head>
-<body>
+<body style="margin: 0; padding: 0; background: #0b0f19;">
   <div class="unlock-wrapper" id="unlock-wrapper">
     <div class="unlock-card" id="unlock-card">
       <div class="logo-icon">🍱</div>
@@ -276,6 +275,10 @@
       }
 
       function renderDecrypted(html) {
+        // Remove shell style tag to completely prevent any CSS bleeding
+        const shellStyle = document.getElementById("okonomi-shell-style");
+        if (shellStyle) shellStyle.remove();
+
         document.open();
         document.write(html);
         document.close();
