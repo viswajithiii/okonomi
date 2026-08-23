@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>okonomi - Protected</title>
+  <style>
+    :root {
+      --bg: #0b0f19;
+      --card-bg: rgba(17, 24, 39, 0.85);
+      --border: rgba(255, 255, 255, 0.08);
+      --text: #f3f4f6;
+      --text-muted: #9ca3af;
+      --accent: #38bdf8;
+      --accent-hover: #0ea5e9;
+      --danger: #f87171;
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 100%);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 1.5rem;
+    }
+    .unlock-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 2.5rem 2rem;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+      text-align: center;
+      transition: transform 0.2s ease;
+    }
+    .unlock-card.shake {
+      animation: shake 0.4s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+    }
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(4px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-6px, 0, 0); }
+      40%, 60% { transform: translate3d(6px, 0, 0); }
+    }
+    .logo-icon {
+      font-size: 2.5rem;
+      margin-bottom: 0.75rem;
+      display: inline-block;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 0.25rem;
+    }
+    .brand-sub {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+      margin-bottom: 1.75rem;
+    }
+    .form-group {
+      margin-bottom: 1.25rem;
+      text-align: left;
+    }
+    .input-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+    input[type="password"], input[type="text"] {
+      width: 100%;
+      background: rgba(15, 23, 42, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 0.75rem 2.5rem 0.75rem 1rem;
+      color: var(--text);
+      font-size: 0.95rem;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(56, 189, 248, 0.15);
+    }
+    .toggle-visibility {
+      position: absolute;
+      right: 0.75rem;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1rem;
+      padding: 0.25rem;
+    }
+    .toggle-visibility:hover {
+      color: var(--text);
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+      font-size: 0.85rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .checkbox-group input {
+      accent-color: var(--accent);
+      cursor: pointer;
+    }
+    .btn-submit {
+      width: 100%;
+      padding: 0.8rem 1rem;
+      background: var(--accent);
+      color: #0b0f19;
+      border: none;
+      border-radius: 10px;
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s ease, opacity 0.15s ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+    }
+    .btn-submit:hover:not(:disabled) {
+      background: var(--accent-hover);
+    }
+    .btn-submit:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .error-msg {
+      display: none;
+      color: var(--danger);
+      background: rgba(248, 113, 113, 0.1);
+      border: 1px solid rgba(248, 113, 113, 0.2);
+      border-radius: 8px;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.85rem;
+      margin-bottom: 1.25rem;
+      text-align: center;
+    }
+    .spinner {
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0, 0, 0, 0.2);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      display: none;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .footer-note {
+      margin-top: 1.5rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="unlock-card" id="unlock-card">
+    <div class="logo-icon">🍱</div>
+    <h1>okonomi (お好み)</h1>
+    <p class="brand-sub">Client-side encrypted vault</p>
+
+    <div class="error-msg" id="error-msg"></div>
+
+    <form id="unlock-form">
+      <div class="form-group">
+        <div class="input-wrapper">
+          <input type="password" id="password-input" placeholder="Enter master password" autofocus autocomplete="current-password" required>
+          <button type="button" class="toggle-visibility" id="toggle-pwd" title="Toggle password visibility">👁</button>
+        </div>
+      </div>
+
+      <label class="checkbox-group">
+        <input type="checkbox" id="remember-device" checked>
+        <span>Remember session on this device</span>
+      </label>
+
+      <button type="submit" class="btn-submit" id="submit-btn">
+        <span class="spinner" id="spinner"></span>
+        <span id="btn-text">Unlock Vault</span>
+      </button>
+    </form>
+
+    <p class="footer-note">AES-256-GCM · PBKDF2 600K · Zero Server Knowledge</p>
+  </div>
+
+  <!-- PAYLOAD_PLACEHOLDER -->
+
+  <script>
+    (function() {
+      const dataEl = document.getElementById("okonomi-data");
+      if (!dataEl) return;
+
+      let payload;
+      try {
+        payload = JSON.parse(dataEl.textContent);
+      } catch (e) {
+        console.error("Malformed payload:", e);
+        return;
+      }
+
+      function base64ToUint8(base64) {
+        const binStr = atob(base64);
+        const len = binStr.length;
+        const bytes = new Uint8Array(len);
+        for (let i = 0; i < len; i++) {
+          bytes[i] = binStr.charCodeAt(i);
+        }
+        return bytes;
+      }
+
+      function uint8ToBase64(bytes) {
+        let binary = '';
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        return btoa(binary);
+      }
+
+      const saltBuf = base64ToUint8(payload.salt);
+      const ivBuf = base64ToUint8(payload.iv);
+      const ctBuf = base64ToUint8(payload.ciphertext);
+
+      async function deriveKey(passwordStr) {
+        const enc = new TextEncoder();
+        const keyMaterial = await crypto.subtle.importKey(
+          "raw",
+          enc.encode(passwordStr),
+          { name: "PBKDF2" },
+          false,
+          ["deriveKey"]
+        );
+        return await crypto.subtle.deriveKey(
+          {
+            name: "PBKDF2",
+            salt: saltBuf,
+            iterations: 600000,
+            hash: "SHA-256"
+          },
+          keyMaterial,
+          { name: "AES-GCM", length: 256 },
+          true,
+          ["encrypt", "decrypt"]
+        );
+      }
+
+      async function decryptWithKey(cryptoKey) {
+        const decryptedBuf = await crypto.subtle.decrypt(
+          { name: "AES-GCM", iv: ivBuf },
+          cryptoKey,
+          ctBuf
+        );
+        const dec = new TextDecoder();
+        return dec.decode(decryptedBuf);
+      }
+
+      function renderDecrypted(html) {
+        document.open();
+        document.write(html);
+        document.close();
+      }
+
+      // Auto-unlock via cached key
+      async function tryCachedUnlock() {
+        const cachedKeyB64 = localStorage.getItem("okonomi_key");
+        const cachedSalt = localStorage.getItem("okonomi_salt");
+        if (cachedKeyB64 && cachedSalt === payload.salt) {
+          try {
+            const rawKey = base64ToUint8(cachedKeyB64);
+            const importedKey = await crypto.subtle.importKey(
+              "raw",
+              rawKey,
+              { name: "AES-GCM" },
+              false,
+              ["decrypt"]
+            );
+            const html = await decryptWithKey(importedKey);
+            renderDecrypted(html);
+            return true;
+          } catch (err) {
+            console.warn("Cached key invalid or salt changed, resetting cache.", err);
+            localStorage.removeItem("okonomi_key");
+            localStorage.removeItem("okonomi_salt");
+          }
+        }
+        return false;
+      }
+
+      // Attempt immediate unlock
+      tryCachedUnlock().then(success => {
+        if (!success) {
+          document.body.style.display = "flex";
+        }
+      });
+
+      // UI Handlers
+      const form = document.getElementById("unlock-form");
+      const pwdInput = document.getElementById("password-input");
+      const toggleBtn = document.getElementById("toggle-pwd");
+      const submitBtn = document.getElementById("submit-btn");
+      const btnText = document.getElementById("btn-text");
+      const spinner = document.getElementById("spinner");
+      const errorMsg = document.getElementById("error-msg");
+      const card = document.getElementById("unlock-card");
+      const rememberCheckbox = document.getElementById("remember-device");
+
+      toggleBtn?.addEventListener("click", () => {
+        const isPwd = pwdInput.type === "password";
+        pwdInput.type = isPwd ? "text" : "password";
+        toggleBtn.textContent = isPwd ? "🙈" : "👁";
+      });
+
+      form?.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const pwd = pwdInput.value;
+        if (!pwd) return;
+
+        submitBtn.disabled = true;
+        spinner.style.display = "inline-block";
+        btnText.textContent = "Decrypting...";
+        errorMsg.style.display = "none";
+
+        try {
+          // Allow DOM update to render spinner before heavy PBKDF2
+          await new Promise(r => setTimeout(r, 20));
+          const key = await deriveKey(pwd);
+          const html = await decryptWithKey(key);
+
+          if (rememberCheckbox.checked) {
+            const rawKey = await crypto.subtle.exportKey("raw", key);
+            localStorage.setItem("okonomi_key", uint8ToBase64(new Uint8Array(rawKey)));
+            localStorage.setItem("okonomi_salt", payload.salt);
+          } else {
+            localStorage.removeItem("okonomi_key");
+            localStorage.removeItem("okonomi_salt");
+          }
+
+          renderDecrypted(html);
+        } catch (err) {
+          console.error("Decryption error:", err);
+          errorMsg.textContent = "Incorrect password or corrupted ciphertext.";
+          errorMsg.style.display = "block";
+          card.classList.remove("shake");
+          void card.offsetWidth; // trigger reflow
+          card.classList.add("shake");
+          submitBtn.disabled = false;
+          spinner.style.display = "none";
+          btnText.textContent = "Unlock Vault";
+          pwdInput.focus();
+        }
+      });
+    })();
+  </script>
+</body>
+</html>

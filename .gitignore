@@ -1,0 +1,16 @@
+# Plaintext sources & secrets (NEVER PUSH TO GIT)
+PASSWORD
+src/apps/
+*.local.*
+
+# Python & Virtual Environments
+.venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Operating System & IDEs
+.DS_Store
+.idea/
+.vscode/
