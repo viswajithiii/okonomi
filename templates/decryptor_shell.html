@@ -7,7 +7,7 @@
   <style>
     :root {
       --bg: #0b0f19;
-      --card-bg: rgba(17, 24, 39, 0.9);
+      --card-bg: rgba(17, 24, 39, 0.95);
       --border: rgba(255, 255, 255, 0.08);
       --text: #f3f4f6;
       --text-muted: #9ca3af;
@@ -17,15 +17,19 @@
       --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 100%);
+    html, body {
+      min-height: 100vh;
+      background: var(--bg);
       color: var(--text);
       font-family: var(--font);
+    }
+    .unlock-wrapper {
       min-height: 100vh;
-      display: none; /* Hidden by default until cached check completes */
+      display: none; /* Revealed only if cached unlock fails */
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
+      background: radial-gradient(circle at top, #1e293b 0%, var(--bg) 100%);
     }
     .unlock-card {
       background: var(--card-bg);
@@ -59,6 +63,7 @@
       font-weight: 700;
       letter-spacing: -0.02em;
       margin-bottom: 0.25rem;
+      color: #fff;
     }
     .brand-sub {
       color: var(--text-muted);
@@ -168,33 +173,35 @@
   </style>
 </head>
 <body>
-  <div class="unlock-card" id="unlock-card">
-    <div class="logo-icon">🍱</div>
-    <h1>okonomi (お好み)</h1>
-    <p class="brand-sub">Client-side encrypted vault</p>
+  <div class="unlock-wrapper" id="unlock-wrapper">
+    <div class="unlock-card" id="unlock-card">
+      <div class="logo-icon">🍱</div>
+      <h1>okonomi (お好み)</h1>
+      <p class="brand-sub">Client-side encrypted vault</p>
 
-    <div class="error-msg" id="error-msg"></div>
+      <div class="error-msg" id="error-msg"></div>
 
-    <form id="unlock-form">
-      <div class="form-group">
-        <div class="input-wrapper">
-          <input type="password" id="password-input" placeholder="Enter master password" autofocus autocomplete="current-password" required>
-          <button type="button" class="toggle-visibility" id="toggle-pwd" title="Toggle password visibility">👁</button>
+      <form id="unlock-form">
+        <div class="form-group">
+          <div class="input-wrapper">
+            <input type="password" id="password-input" placeholder="Enter master password" autocomplete="current-password" required>
+            <button type="button" class="toggle-visibility" id="toggle-pwd" title="Toggle password visibility">👁</button>
+          </div>
         </div>
-      </div>
 
-      <label class="checkbox-group">
-        <input type="checkbox" id="remember-device" checked>
-        <span>Remember session on this device</span>
-      </label>
+        <label class="checkbox-group">
+          <input type="checkbox" id="remember-device" checked>
+          <span>Remember session on this device</span>
+        </label>
 
-      <button type="submit" class="btn-submit" id="submit-btn">
-        <span class="spinner" id="spinner"></span>
-        <span id="btn-text">Unlock Vault</span>
-      </button>
-    </form>
+        <button type="submit" class="btn-submit" id="submit-btn">
+          <span class="spinner" id="spinner"></span>
+          <span id="btn-text">Unlock Vault</span>
+        </button>
+      </form>
 
-    <p class="footer-note">AES-256-GCM · PBKDF2 600K · Zero Server Knowledge</p>
+      <p class="footer-note">AES-256-GCM · PBKDF2 600K · Zero Server Knowledge</p>
+    </div>
   </div>
 
   <!-- PAYLOAD_PLACEHOLDER -->
@@ -268,16 +275,98 @@
         return dec.decode(decryptedBuf);
       }
 
-      function renderDecrypted(html) {
-        document.open();
-        document.write(html);
-        document.close();
+      function renderDecrypted(decryptedHtml) {
+        try {
+          const parser = new DOMParser();
+          const newDoc = parser.parseFromString(decryptedHtml, "text/html");
+
+          // 1. Update Title
+          if (newDoc.title) {
+            document.title = newDoc.title;
+          }
+
+          // 2. Clear shell styles/content and apply new attributes
+          document.documentElement.className = newDoc.documentElement.className || "";
+          for (const attr of Array.from(newDoc.documentElement.attributes)) {
+            document.documentElement.setAttribute(attr.name, attr.value);
+          }
+
+          // 3. Replace Head Elements (excluding scripts for now)
+          const newHeadNodes = [];
+          for (const node of Array.from(newDoc.head.childNodes)) {
+            if (node.nodeName.toLowerCase() !== "script") {
+              newHeadNodes.push(document.importNode(node, true));
+            }
+          }
+          document.head.innerHTML = "";
+          for (const node of newHeadNodes) {
+            document.head.appendChild(node);
+          }
+
+          // 4. Replace Body Elements (excluding scripts for now)
+          document.body.removeAttribute("style");
+          document.body.className = newDoc.body.className || "";
+          for (const attr of Array.from(newDoc.body.attributes)) {
+            document.body.setAttribute(attr.name, attr.value);
+          }
+
+          // Clone body content without scripts
+          const bodyClone = newDoc.body.cloneNode(true);
+          const bodyScripts = bodyClone.querySelectorAll("script");
+          bodyScripts.forEach(s => s.remove());
+          document.body.innerHTML = bodyClone.innerHTML;
+
+          // 5. Extract and execute all scripts in strict order
+          const allScripts = Array.from(newDoc.querySelectorAll("script"));
+
+          function executeScript(index) {
+            if (index >= allScripts.length) {
+              // Dispatch standard document lifecycle events
+              window.dispatchEvent(new Event("DOMContentLoaded"));
+              window.dispatchEvent(new Event("load"));
+              return;
+            }
+
+            const oldScript = allScripts[index];
+            const newScript = document.createElement("script");
+
+            for (const attr of Array.from(oldScript.attributes)) {
+              newScript.setAttribute(attr.name, attr.value);
+            }
+
+            if (oldScript.src) {
+              newScript.onload = () => executeScript(index + 1);
+              newScript.onerror = () => {
+                console.warn("Failed loading external script:", oldScript.src);
+                executeScript(index + 1);
+              };
+              document.head.appendChild(newScript);
+            } else {
+              newScript.textContent = oldScript.textContent;
+              document.body.appendChild(newScript);
+              executeScript(index + 1);
+            }
+          }
+
+          executeScript(0);
+        } catch (err) {
+          console.error("Error rendering decrypted document:", err);
+          // Fallback to document.write
+          document.open();
+          document.write(decryptedHtml);
+          document.close();
+        }
       }
 
       function showUnlockPrompt() {
-        document.body.style.display = "flex";
+        const wrapper = document.getElementById("unlock-wrapper");
+        if (wrapper) {
+          wrapper.style.display = "flex";
+        }
         const pwdInput = document.getElementById("password-input");
-        if (pwdInput) pwdInput.focus();
+        if (pwdInput) {
+          pwdInput.focus();
+        }
       }
 
       // Auto-unlock via cached key
@@ -306,16 +395,17 @@
         return false;
       }
 
-      // Attempt immediate unlock
+      // Attempt immediate cached unlock
       tryCachedUnlock().then(success => {
         if (!success) {
           showUnlockPrompt();
         }
-      }).catch(() => {
+      }).catch(err => {
+        console.error("Cached unlock exception:", err);
         showUnlockPrompt();
       });
 
-      // UI Handlers
+      // UI Form Handlers
       const form = document.getElementById("unlock-form");
       const pwdInput = document.getElementById("password-input");
       const toggleBtn = document.getElementById("toggle-pwd");
@@ -343,7 +433,6 @@
         errorMsg.style.display = "none";
 
         try {
-          // Allow DOM update to render spinner before heavy PBKDF2
           await new Promise(r => setTimeout(r, 20));
           const key = await deriveKey(pwd);
           const html = await decryptWithKey(key);
@@ -363,7 +452,7 @@
           errorMsg.textContent = "Incorrect password or corrupted ciphertext.";
           errorMsg.style.display = "block";
           card.classList.remove("shake");
-          void card.offsetWidth; // trigger reflow
+          void card.offsetWidth;
           card.classList.add("shake");
           submitBtn.disabled = false;
           spinner.style.display = "none";
