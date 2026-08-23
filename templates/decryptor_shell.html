@@ -25,7 +25,7 @@
     }
     .unlock-wrapper {
       min-height: 100vh;
-      display: none; /* Revealed only if cached unlock fails */
+      display: none;
       align-items: center;
       justify-content: center;
       padding: 1.5rem;
@@ -275,87 +275,10 @@
         return dec.decode(decryptedBuf);
       }
 
-      function renderDecrypted(decryptedHtml) {
-        try {
-          const parser = new DOMParser();
-          const newDoc = parser.parseFromString(decryptedHtml, "text/html");
-
-          // 1. Update Title
-          if (newDoc.title) {
-            document.title = newDoc.title;
-          }
-
-          // 2. Clear shell styles/content and apply new attributes
-          document.documentElement.className = newDoc.documentElement.className || "";
-          for (const attr of Array.from(newDoc.documentElement.attributes)) {
-            document.documentElement.setAttribute(attr.name, attr.value);
-          }
-
-          // 3. Replace Head Elements (excluding scripts for now)
-          const newHeadNodes = [];
-          for (const node of Array.from(newDoc.head.childNodes)) {
-            if (node.nodeName.toLowerCase() !== "script") {
-              newHeadNodes.push(document.importNode(node, true));
-            }
-          }
-          document.head.innerHTML = "";
-          for (const node of newHeadNodes) {
-            document.head.appendChild(node);
-          }
-
-          // 4. Replace Body Elements (excluding scripts for now)
-          document.body.removeAttribute("style");
-          document.body.className = newDoc.body.className || "";
-          for (const attr of Array.from(newDoc.body.attributes)) {
-            document.body.setAttribute(attr.name, attr.value);
-          }
-
-          // Clone body content without scripts
-          const bodyClone = newDoc.body.cloneNode(true);
-          const bodyScripts = bodyClone.querySelectorAll("script");
-          bodyScripts.forEach(s => s.remove());
-          document.body.innerHTML = bodyClone.innerHTML;
-
-          // 5. Extract and execute all scripts in strict order
-          const allScripts = Array.from(newDoc.querySelectorAll("script"));
-
-          function executeScript(index) {
-            if (index >= allScripts.length) {
-              // Dispatch standard document lifecycle events
-              window.dispatchEvent(new Event("DOMContentLoaded"));
-              window.dispatchEvent(new Event("load"));
-              return;
-            }
-
-            const oldScript = allScripts[index];
-            const newScript = document.createElement("script");
-
-            for (const attr of Array.from(oldScript.attributes)) {
-              newScript.setAttribute(attr.name, attr.value);
-            }
-
-            if (oldScript.src) {
-              newScript.onload = () => executeScript(index + 1);
-              newScript.onerror = () => {
-                console.warn("Failed loading external script:", oldScript.src);
-                executeScript(index + 1);
-              };
-              document.head.appendChild(newScript);
-            } else {
-              newScript.textContent = oldScript.textContent;
-              document.body.appendChild(newScript);
-              executeScript(index + 1);
-            }
-          }
-
-          executeScript(0);
-        } catch (err) {
-          console.error("Error rendering decrypted document:", err);
-          // Fallback to document.write
-          document.open();
-          document.write(decryptedHtml);
-          document.close();
-        }
+      function renderDecrypted(html) {
+        document.open();
+        document.write(html);
+        document.close();
       }
 
       function showUnlockPrompt() {
