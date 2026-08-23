@@ -172,7 +172,7 @@
   </style>
 </head>
 <body style="margin: 0; padding: 0; background: #0b0f19;">
-  <div class="unlock-wrapper" id="unlock-wrapper">
+  <div class="unlock-wrapper" id="unlock-wrapper" style="display: none;">
     <div class="unlock-card" id="unlock-card">
       <div class="logo-icon">🍱</div>
       <h1>okonomi (お好み)</h1>
@@ -275,7 +275,10 @@
       }
 
       function renderDecrypted(html) {
-        // Remove shell style tag to completely prevent any CSS bleeding
+        // Completely remove the unlock UI elements and styles before replacing document
+        const wrapper = document.getElementById("unlock-wrapper");
+        if (wrapper) wrapper.remove();
+
         const shellStyle = document.getElementById("okonomi-shell-style");
         if (shellStyle) shellStyle.remove();
 
