@@ -11,13 +11,14 @@ Local Machine (Plaintext)                    GitHub & Public Internet (Ciphertex
 ┌───────────────────────────────┐           ┌─────────────────────────────────────────┐
 │ PASSWORD (gitignored)         │           │ build.py, deploy.sh, dev.sh (tracked)   │
 │ src/apps/ (gitignored)        │  ───────► │ templates/ (tracked generic templates)  │
-│ - test_page/index.html        │  build.py │ dist/ (tracked AES-256-GCM ciphertext)  │
+│ - test_page/index.html        │  build.py │ docs/ (tracked AES-256-GCM ciphertext)  │
 │ - quick-notes.html            │           │ - index.html (stealth blank root)       │
 │ - budget-calc/index.html      │           │ - test_page/index.html (encrypted app)  │
 └───────────────────────────────┘           └─────────────────────────────────────────┘
 ```
 
-- **Direct Stealth URLs**: No hub of links is published on the home page. Apps live strictly at their designated path (e.g. `/test_page/`), maintaining stealth.
+- **Direct Clean URLs**: Encrypted apps are served directly from the `/docs` folder without any `/dist` in the URL (e.g. `https://viswajithiii.github.io/okonomi/test_page/`).
+- **Stealth Root**: No directory of links is published on the home page.
 - **Encryption**: AES-256-GCM with PBKDF2-HMAC-SHA256 (600,000 iterations).
 - **Single-Unlock UX**: Entering your master password once on any app unlocks all apps across the domain with **0ms instant decryption** via cached key in `localStorage`.
 - **Strict Separation**: Master password and raw plaintext source code (`src/apps/`) are strictly gitignored and never leave your local machine.
@@ -89,9 +90,18 @@ okonomi/
 │           ├── style.css
 │           └── app.js
 │
-└── dist/                      # [TRACKED] AES-256-GCM encrypted artifacts
+└── docs/                      # [TRACKED] AES-256-GCM encrypted artifacts (GitHub Pages root)
     ├── .nojekyll              # GitHub Pages Jekyll bypass
     ├── index.html             # Stealth empty root
     └── test_page/
         └── index.html         # Self-decrypting test page
 ```
+
+---
+
+## ⚙️ GitHub Pages Setup
+
+1. In GitHub repo, go to **Settings** → **Pages**.
+2. Under **Build and deployment** → **Source**, select **Deploy from a branch**.
+3. Select Branch: **`main`**, Folder: **`/docs`**.
+4. Click **Save**.

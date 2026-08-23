@@ -3,8 +3,8 @@
 okonomi (お好み) Build Engine
 =============================
 Compiles, inlines, and encrypts standalone HTML apps using AES-256-GCM (PBKDF2-HMAC-SHA256).
-Outputs self-decrypting static bundles into dist/<slug>/index.html ready for GitHub Pages hosting.
-Maintains a stealth/empty home page at dist/index.html with zero hub directory links.
+Outputs self-decrypting static bundles into docs/<slug>/index.html ready for GitHub Pages hosting.
+Maintains a stealth/empty home page at docs/index.html with zero hub directory links.
 """
 
 import argparse
@@ -28,7 +28,7 @@ from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
 ROOT_DIR = Path(__file__).parent.resolve()
 SRC_APPS_DIR = ROOT_DIR / "src" / "apps"
 TEMPLATES_DIR = ROOT_DIR / "templates"
-DIST_DIR = ROOT_DIR / "dist"
+DOCS_DIR = ROOT_DIR / "docs"
 PASSWORD_FILE = ROOT_DIR / "PASSWORD"
 SHELL_TEMPLATE_FILE = TEMPLATES_DIR / "decryptor_shell.html"
 
@@ -243,7 +243,7 @@ def main():
     parser = argparse.ArgumentParser(description="okonomi (お好み) static builder & encryptor")
     parser.add_argument("--generate-passphrase", action="store_true", help="Generate a secure master passphrase and exit")
     parser.add_argument("--password", type=str, help="Master password override")
-    parser.add_argument("--clean", action="store_true", help="Clean dist/ folder before building")
+    parser.add_argument("--clean", action="store_true", help="Clean docs/ folder before building")
     args = parser.parse_args()
 
     if args.generate_passphrase:
@@ -263,10 +263,10 @@ def main():
     shell_template = SHELL_TEMPLATE_FILE.read_text(encoding="utf-8")
     password = get_password(args.password)
 
-    # 1. Clean dist if requested
-    if args.clean and DIST_DIR.exists():
-        shutil.rmtree(DIST_DIR)
-    DIST_DIR.mkdir(parents=True, exist_ok=True)
+    # 1. Clean docs if requested
+    if args.clean and DOCS_DIR.exists():
+        shutil.rmtree(DOCS_DIR)
+    DOCS_DIR.mkdir(parents=True, exist_ok=True)
 
     # 2. Derive stable build salt and key
     salt = get_stable_salt(password)
@@ -293,9 +293,9 @@ def main():
         iv_b64 = base64.b64encode(iv).decode("ascii")
         ciphertext_b64 = base64.b64encode(ciphertext).decode("ascii")
 
-        app_dist_dir = DIST_DIR / slug
-        app_dist_dir.mkdir(parents=True, exist_ok=True)
-        app_dist_file = app_dist_dir / "index.html"
+        app_docs_dir = DOCS_DIR / slug
+        app_docs_dir.mkdir(parents=True, exist_ok=True)
+        app_docs_file = app_docs_dir / "index.html"
 
         encrypted_page_html = wrap_with_decryptor(
             shell_template,
@@ -304,25 +304,25 @@ def main():
             ciphertext_b64,
             title
         )
-        app_dist_file.write_text(encrypted_page_html, encoding="utf-8")
-        print(f"    ✓ Encrypted -> dist/{slug}/index.html ({len(encrypted_page_html):,} bytes)")
+        app_docs_file.write_text(encrypted_page_html, encoding="utf-8")
+        print(f"    ✓ Encrypted -> docs/{slug}/index.html ({len(encrypted_page_html):,} bytes)")
 
     # 4. Generate Stealth Home Page (No Directory / Hub Listing)
-    stealth_index_file = DIST_DIR / "index.html"
+    stealth_index_file = DOCS_DIR / "index.html"
     stealth_index_file.write_text(
         "<!DOCTYPE html>\n<html lang=\"en\">\n<head><meta charset=\"UTF-8\"><title></title></head>\n<body></body>\n</html>\n",
         encoding="utf-8"
     )
-    print("  • Created stealth root page at dist/index.html (zero links)")
+    print("  • Created stealth root page at docs/index.html (zero links)")
 
     # 5. Ensure .nojekyll for GitHub Pages
-    nojekyll_file = DIST_DIR / ".nojekyll"
+    nojekyll_file = DOCS_DIR / ".nojekyll"
     nojekyll_file.touch()
 
     elapsed = time.time() - start_time
     print(f"\n✨ Build complete in {elapsed:.2f}s!")
     print(f"   Shared Salt: {salt_b64[:12]}...")
-    print(f"   Output Directory: dist/ (Ready for GitHub Pages)")
+    print(f"   Output Directory: docs/ (Ready for GitHub Pages)")
 
 
 if __name__ == "__main__":
